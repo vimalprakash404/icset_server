@@ -7,7 +7,7 @@ const cors = require('cors');
 
 
 // Connect to your MongoDB instance
-mongoose.connect('mongodb://localhost/ICSET', {
+mongoose.connect('mongourl', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
@@ -138,13 +138,14 @@ app.put('/users/:userId/verify', async (req, res) => {
     try {
       const userId = req.params.userId;
       const { lunch } = req.body;
-  
-      const user = await User.findById(userId);
-  
+      const { verify } = req.body;
+      const new_userId=convertToFourDigitNumber(userId);
+      const user = await User.findById(new_userId);
+      
       if (!user) {
         return res.status(404).json({ error: 'User not found' });
       }
-  
+      
       user.lunch = lunch;
       await user.save();
   
