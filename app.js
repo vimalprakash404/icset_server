@@ -118,7 +118,7 @@ app.put('/users/:userId/verify', async (req, res) => {
     try {
       const userId = req.params.userId;
       const { verify } = req.body;
-  
+      const new_userId=convertToFourDigitNumber(new_userId);
       const user = await User.findById(userId);
   
       if (!user) {
