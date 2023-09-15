@@ -7,7 +7,7 @@ const cors = require('cors');
 
 
 // Connect to your MongoDB instance
-mongoose.connect('mongourl', {
+mongoose.connect('', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
@@ -51,6 +51,7 @@ const UserSchema = new mongoose.Schema({
   verify: Boolean,
   email: String,
   lunch: Boolean,
+  time : Date,
 });
 
 const GoogleSchema = new mongoose.Schema({
@@ -118,14 +119,16 @@ app.put('/users/:userId/verify', async (req, res) => {
     try {
       const userId = req.params.userId;
       const { verify } = req.body;
-      const new_userId=convertToFourDigitNumber(new_userId);
-      const user = await User.findById(userId);
+      const new_userId=convertToFourDigitNumber(userId);
+      const user = await User.findById(new_userId);
   
       if (!user) {
         return res.status(404).json({ error: 'User not found' });
       }
   
+      const currentTimeseries = new Date();
       user.verify = verify;
+      user.time = currentTimeseries;
       await user.save();
   
       res.json(user);
@@ -182,12 +185,14 @@ app.put('/users/:userId/verify', async (req, res) => {
       const { verify } = req.body;
       const new_userId=convertToFourDigitNumber(userId);
       const user = await Ibm.findById(new_userId);
+      
   
       if (!user) {
         return res.status(404).json({ error: 'User not found' });
       }
-  
+      const currentTimeseries = new Date();
       user.verify = verify;
+      user.time = currentTimeseries;
       await user.save();
   
       res.json(user);
@@ -241,6 +246,226 @@ app.get('/user/:userId', async (req, res) => {
     }
   });
 
+  app.get('/users/verified/count', async (req, res) => {
+    try {
+      const count = await User.countDocuments({ verify: true });
+      res.json({ count });
+    } catch (error) {
+      res.status(500).json({ error: 'Error counting verified users' });
+    }
+  });
+
+  app.get('/ibm/verified/count', async (req, res) => {
+    try {
+      const count = await Ibm.countDocuments({ verify: true });
+      res.json({ count });
+    } catch (error) {
+      res.status(500).json({ error: 'Error counting verified users' });
+    }
+  });
+
+  app.get('/google/verified/count', async (req, res) => {
+    try {
+      const count = await Google.countDocuments({ verify: true });
+      res.json({ count });
+    } catch (error) {
+      res.status(500).json({ error: 'Error counting verified users' });
+    }
+  });
+
+  app.get('/google-reception-count', async (req, res) => {
+    try {
+      // Get the IDs to match from the 'matchingIds' collection
+      const matchingIds = await Google.find({}, '_id');
+  
+      // Extract the IDs from the matchingIds array
+      const idsToMatch = matchingIds.map((entry) => entry._id);
+  
+      // Count the number of verified users with matching IDs
+      const count = await User.countDocuments({ _id: { $in: idsToMatch }, verify: true });
+  
+      res.json({ count });
+    } catch (error) {
+      console.error('Error fetching verified user count:', error);
+      res.status(500).json({ error: 'Error fetching data' });
+    }
+  });
+
+  app.get('/ibm-reception-count', async (req, res) => {
+    try {
+      // Get the IDs to match from the 'matchingIds' collection
+      const matchingIds = await Ibm.find({}, '_id');
+  
+      // Extract the IDs from the matchingIds array
+      const idsToMatch = matchingIds.map((entry) => entry._id);
+  
+      // Count the number of verified users with matching IDs
+      const count = await User.countDocuments({ _id: { $in: idsToMatch }, verify: true });
+  
+      res.json({ count });
+    } catch (error) {
+      console.error('Error fetching verified user count:', error);
+      res.status(500).json({ error: 'Error fetching data' });
+    }
+  });
+
+  function formatDateToYYYYMMDDHHMISS(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-based
+    const day = String(date.getDate()).padStart(2, '0');
+    const hour = String(date.getHours()).padStart(2, '0');
+    const minute = String(date.getMinutes()).padStart(2, '0');
+    const second = String(date.getSeconds()).padStart(2, '0');
+  
+    return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+  }
+  
+  function parseStringToDate(yyyy_mm_dd_hh_mi_ss) {
+    // Split the input string into date and time parts
+    const [datePart, timePart] = yyyy_mm_dd_hh_mi_ss.split(' ');
+  
+    // Split the date part into year, month, and day components
+    const [year, month, day] = datePart.split('-').map(Number);
+  
+    // Split the time part into hour, minute, and second components
+    const [hour, minute, second] = timePart.split(':').map(Number);
+  
+    // Create a new Date object
+    const dateObject = new Date(year, month - 1, day, hour, minute, second); // Months are zero-based
+
+    if (isNaN(dateObject.getTime())) {
+      throw new Error('Invalid date format');
+    }
+  
+    return dateObject;
+  }
+
+  function compareTimeSeries(date1, date2) {
+    if (!(date1 instanceof Date) || !(date2 instanceof Date)) {
+      throw new Error('Both arguments must be valid Date objects');
+    }
+  
+    if (date1 < date2) {
+      return 'earlier';
+    } else if (date1 > date2) {
+      return 'later';
+    } else {
+      return 'equal';
+    }
+  }
+
+  function getLatestTimeSeries(callback) {
+    // Find the document with the latest timestamp
+    TimeSeries.findOne().sort({ timestamp: -1 }).exec((err, latestEntry) => {
+      if (err) {
+        console.error('Error getting latest time series:', err);
+        callback(err, null);
+      } else {
+        callback(null, latestEntry);
+      }
+    });
+  }
+
+  function getLatestTimeSeries() {
+    return User.findOne().sort({ time: -1 });
+  }
+
+  function getDataBetweenTimeSeries(startDate, endDate) {
+    return User.find({
+      time: {
+        $gte: startDate,
+        $lte: endDate,
+      },
+    }).exec();
+  }
+
+app.get('/current-timeseries', (req, res) => {
+  try {
+    const currentTimeseries = new Date(); // Get the current date and time in a readable format
+    const parsedDate = Date.parse(currentTimeseries);
+    const return_data= formatDateToYYYYMMDDHHMISS(currentTimeseries)
+    const sampledate=new Date("2023-09-14 23:14:13")
+
+    const startTimestamp = new Date('2023-09-14T18:42:06.668Z'); // Replace with your start date and time
+    const endTimestamp = new Date('2023-09-14T18:43:08.832Z');   // Replace with your end date and time
+
+    getDataBetweenTimeSeries(startTimestamp, endTimestamp)
+      .then((data) => {
+        console.log('Data between time series:', data);
+      })
+      .catch((error) => {
+        console.error('Error:', error);
+      });
+    const data = [45,6565,544]
+    res.json({ return_data});
+  } catch (error) {
+    console.error('Error fetching current timeseries:', error);
+    res.status(500).json({ error: 'Error fetching data' });
+  }
+});
+
+async function isNull() {
+  try {
+    const count = await User.countDocuments({ 'time': null });
+
+    // If count is zero, it means the field is null in all rows
+    return count === 0;
+  } catch (error) {
+    console.error('Error:', error);
+    throw error;
+  }
+}
+
+
+
+app.put('/update-timeseries/', async (req, res) => {
+  try {
+
+    const { Time } = req.body;
+    const parsedDate = Date.parse(Time);
+    res.json({ parsedDate });
+  } catch (error) {
+    console.error('Error updating timeseries:', error);
+    res.status(500).json({ error: 'Error updating timeseries' });
+  }
+});
+
+app.post('/time-sync', async (req, res,next) => {
+  try {
+    const userMaxtime = req.body.maxtime; // Assuming the client sends the string in the 'inputString' field of the request body
+    if(userMaxtime === null)
+    {
+      const fg=await isNull()
+      if (fg)
+      {
+        const maxtime=null
+        const userid=[]
+        res.json({ maxtime , userid });
+      }
+      else{
+        const maxtime= await getLatestTimeSeries().time
+        const userid=await getDataBetweenTimeSeries(new Date("2022-09-14T18:42:06.668Z"), maxtime);
+        res.json({ maxtime : null , userid });
+      }
+      
+    }
+    else
+    {
+      const latestEntry =await getLatestTimeSeries()
+      const startTimestamp=new Date(userMaxtime)
+      endTimestamp=latestEntry.time
+      const data = await getDataBetweenTimeSeries(startTimestamp, endTimestamp);
+      res.json({ endTimestamp , data });
+      next()
+    }
+
+    
+    
+  } catch (error) {
+    console.error('Error processing string:', error);
+    res.status(500).json({ error: 'Error processing string' });
+  }
+});
 
 
 // Start the server
