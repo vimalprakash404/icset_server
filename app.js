@@ -7,7 +7,7 @@ const cors = require('cors');
 
 
 // Connect to your MongoDB instance
-mongoose.connect('', {
+mongoose.connect('mongodb+srv://vimalprakash3322:gAvdAtbcv6PUqKzp@cluster0.hknayny.mongodb.net/ICSET?retryWrites=true&w=majority', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
@@ -416,46 +416,63 @@ async function isNull() {
   }
 }
 
-
-
-app.put('/update-timeseries/', async (req, res) => {
+async function getAllVerifiedUsers() {
   try {
+    const verifiedUsers = await User.find({ verify: true });
 
-    const { Time } = req.body;
-    const parsedDate = Date.parse(Time);
-    res.json({ parsedDate });
+    return verifiedUsers;
   } catch (error) {
-    console.error('Error updating timeseries:', error);
-    res.status(500).json({ error: 'Error updating timeseries' });
+    console.error('Error:', error);
+    throw error;
   }
-});
+}
+
+async function getVerifiedUsersAfterTimestamp(timestamp) {
+  try {
+    const verifiedUsers = await User.find({
+      verify: true,
+      time: { $gte: timestamp }, // Filter by timestamp greater than or equal to the provided value
+    });
+    return verifiedUsers;
+  } catch (error) {
+    console.error('Error:', error);
+    throw error;
+  }
+}
+
+async function getMaxTime() {
+  try {
+    const latestDocument = await User.findOne({}).sort({ time: -1 });
+
+    if (latestDocument) {
+      // Use the specified field name to extract the value
+      const fieldValue = latestDocument["time"];
+      return fieldValue;
+    } else {
+      // Handle the case where no documents exist in the collection
+      return null; // or any other default value
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    throw error;
+  }
+}
 
 app.post('/time-sync', async (req, res,next) => {
   try {
     const userMaxtime = req.body.maxtime; // Assuming the client sends the string in the 'inputString' field of the request body
     if(userMaxtime === null)
     {
-      const fg=await isNull()
-      if (fg)
-      {
-        const maxtime=null
-        const userid=[]
-        res.json({ maxtime , userid });
-      }
-      else{
-        const maxtime= await getLatestTimeSeries().time
-        const userid=await getDataBetweenTimeSeries(new Date("2022-09-14T18:42:06.668Z"), maxtime);
-        res.json({ maxtime : null , userid });
-      }
-      
+      const data= await getAllVerifiedUsers();
+      const maxtime = await getMaxTime({ time: -1 });
+      res.json({ data  ,maxtime});
     }
     else
     {
-      const latestEntry =await getLatestTimeSeries()
-      const startTimestamp=new Date(userMaxtime)
-      endTimestamp=latestEntry.time
-      const data = await getDataBetweenTimeSeries(startTimestamp, endTimestamp);
-      res.json({ endTimestamp , data });
+      const time_data = new Date(userMaxtime)
+      const data= await getVerifiedUsersAfterTimestamp(time_data)
+      const maxtime = await getMaxTime();
+      res.json({ data  , maxtime});
       next()
     }
 
