@@ -62,6 +62,7 @@ const GoogleSchema = new mongoose.Schema({
     phone: String,
     verify: Boolean,
     email: String,
+    verifiedby : String,
   });
 
   const IbmSchema = new mongoose.Schema({
@@ -71,6 +72,7 @@ const GoogleSchema = new mongoose.Schema({
     phone: String,
     verify: Boolean,
     email: String,
+    verifiedby : String
   });
 
 
@@ -185,13 +187,23 @@ app.put('/users/:userId/verify', async (req, res) => {
       const new_userId=convertToFourDigitNumber(userId);
       const user = await Google.findById(new_userId);
   
+      const { userid } = req.body
+      if (userid === undefined)
+      {
+       return res.json({ error: 'user id not provided' })
+      }
+      else{
+        if (! await Authenticate.findOne({ _id : userid }))
+        {
+          return res.json({ error: 'wrong user id ' })
+        }
+      }
       if (!user) {
         return res.status(404).json({ error: 'User not found' });
       }
-  
       user.verify = verify;
+      user.verifiedby = userid;
       await user.save();
-  
       res.json(user);
     } catch (error) {
       res.status(500).json({ error: 'Error updating verification status' });
@@ -204,13 +216,25 @@ app.put('/users/:userId/verify', async (req, res) => {
       const { verify } = req.body;
       const new_userId=convertToFourDigitNumber(userId);
       const user = await Ibm.findById(new_userId);
-      
-  
+
+      const { userid } = req.body
+      if (userid === undefined)
+      {
+       return res.json({ error: 'user id not provided' })
+      }
+      else{
+        if (! await Authenticate.findOne({ _id : userid }))
+        {
+          return res.json({ error: 'wrong user id ' })
+        }
+      }
       if (!user) {
         return res.status(404).json({ error: 'User not found' });
       }
+      
       const currentTimeseries = new Date();
       user.verify = verify;
+      user.verifiedby = userid;
       user.time = currentTimeseries;
       await user.save();
   
