@@ -124,7 +124,7 @@ app.get('/google', async (req, res) => {
 
 app.put('/users/:userId/verify', async (req, res) => {
     try {
-      const userId = req.params.userId;
+      const userId = req.params.userId
       const { verify } = req.body;
       const new_userId=convertToFourDigitNumber(userId);
       const user = await User.findById(new_userId);
@@ -540,13 +540,15 @@ app.post('/login', async (req, res) => {
     if (user) {
       res.json({ message: 'Login successful', user , authenticate_status : true });
     } else {
-      res.status(401).json({ authenticate_status : false, message : 'Invalid credentials' });
+      res.json({ authenticate_status : false, message : 'Invalid credentials' });
     }
   } catch (error) {
     console.error('Error:', error);
     res.status(500).json({ error: 'Error checking credentials' });
   }
 });
+
+
 
 // Start the server
 app.listen(port, () => {
