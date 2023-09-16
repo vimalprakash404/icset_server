@@ -52,6 +52,7 @@ const UserSchema = new mongoose.Schema({
   email: String,
   lunch: Boolean,
   time : Date,
+  verifiedby : String
 });
 
 const GoogleSchema = new mongoose.Schema({
@@ -128,13 +129,24 @@ app.put('/users/:userId/verify', async (req, res) => {
       const { verify } = req.body;
       const new_userId=convertToFourDigitNumber(userId);
       const user = await User.findById(new_userId);
-  
+      const { userid } = req.body
+      if (userid === undefined)
+      {
+       return res.json({ error: 'user id not provided' })
+      }
+      else{
+        if (! await Authenticate.findOne({ _id : userid }))
+        {
+          return res.json({ error: 'wrong user id ' })
+        }
+      }
       if (!user) {
         return res.status(404).json({ error: 'User not found' });
       }
   
       const currentTimeseries = new Date();
       user.verify = verify;
+      user.verifiedby = userid;
       user.time = currentTimeseries;
       await user.save();
   
