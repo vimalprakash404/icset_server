@@ -431,7 +431,7 @@ async function getVerifiedUsersAfterTimestamp(timestamp) {
   try {
     const verifiedUsers = await User.find({
       verify: true,
-      time: { $gte: timestamp }, // Filter by timestamp greater than or equal to the provided value
+      time: { $gt: timestamp }, // Filter by timestamp greater than or equal to the provided value
     });
     return verifiedUsers;
   } catch (error) {
@@ -484,6 +484,22 @@ app.post('/time-sync', async (req, res,next) => {
   }
 });
 
+app.post('/getUsersByInstitution', async (req, res) => {
+  try {
+    const institutionName = req.body.institution; // Extract institution name from the request body
+
+    if (!institutionName) {
+      return res.status(400).json({ error: 'Institution name is required in the request body' });
+    }
+
+    const users = await User.find({ institution: institutionName });
+
+    res.json(users);
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Error fetching users' });
+  }
+});
 
 // Start the server
 app.listen(port, () => {
