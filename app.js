@@ -72,9 +72,16 @@ const GoogleSchema = new mongoose.Schema({
     email: String,
   });
 
+
+  const AuthenticateSchema = new mongoose.Schema({
+    _id: String,
+    password : String
+  });
+
 const User = mongoose.model('User', UserSchema);
 const Google = mongoose.model('Google', GoogleSchema);
 const Ibm = mongoose.model('Ibm', IbmSchema);
+const Authenticate = mongoose.model('Authenticate',AuthenticateSchema);
 // Middleware for parsing JSON and URL-encoded request bodies
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -498,6 +505,46 @@ app.post('/getUsersByInstitution', async (req, res) => {
   } catch (error) {
     console.error('Error:', error);
     res.status(500).json({ error: 'Error fetching users' });
+  }
+});
+
+
+async function checkCredentials(userid, password) {
+  try {
+    const user = await Authenticate.findOne({ "_id" :  userid });
+
+    if (!user) {
+      console.log("no user found")
+      return null; // User not found
+    }
+
+    // In production, use a secure password hashing library to compare passwords
+    if (user.password === password) {
+      console.log("correct password")
+      return user; // Credentials match
+    } else {
+      console.log("wrong password")
+      return null; // Incorrect password
+    }
+  } catch (error) {
+    throw error;
+  }
+}
+
+app.post('/login', async (req, res) => {
+  const { userid, password } = req.body;
+
+  try {
+    const user = await checkCredentials(userid, password);
+
+    if (user) {
+      res.json({ message: 'Login successful', user , authenticate_status : true });
+    } else {
+      res.status(401).json({ authenticate_status : false, message : 'Invalid credentials' });
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Error checking credentials' });
   }
 });
 
