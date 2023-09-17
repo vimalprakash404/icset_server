@@ -2,7 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const app = express();
-const port = 3000;
+const port = 80;
 const cors = require('cors');
 
 
@@ -132,6 +132,11 @@ app.put('/users/:userId/verify', async (req, res) => {
       const new_userId=convertToFourDigitNumber(userId);
       const user = await User.findById(new_userId);
       const { userid } = req.body
+      if (user.verify) 
+      {
+        console.log("data")
+        return res.json(user);
+      } 
       if (userid === undefined)
       {
        return res.json({ error: 'user id not provided' })
@@ -188,6 +193,11 @@ app.put('/users/:userId/verify', async (req, res) => {
       const user = await Google.findById(new_userId);
   
       const { userid } = req.body
+      if (user.verify) 
+      {
+        console.log("data")
+        return res.json(user);
+      } 
       if (userid === undefined)
       {
        return res.json({ error: 'user id not provided' })
@@ -216,7 +226,12 @@ app.put('/users/:userId/verify', async (req, res) => {
       const { verify } = req.body;
       const new_userId=convertToFourDigitNumber(userId);
       const user = await Ibm.findById(new_userId);
-
+      if (user.verify) 
+      {
+        console.log("data")
+        return res.json(user);
+      } 
+      console.log("data created")
       const { userid } = req.body
       if (userid === undefined)
       {
