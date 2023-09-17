@@ -93,7 +93,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.get("")
 app.get('/users', async (req, res) => {
   try {
-    const users = await User.find();
+    const users = await User.find().sort({_id: 1});
     res.json(users);
   } catch (error) {
     res.status(500).json({ error: 'Error fetching data' });
@@ -106,7 +106,7 @@ app.get('/', (req, res) => {
 
 app.get('/google', async (req, res) => {
     try {
-      const users = await Google.find();
+      const users = await Google.find().sort({_id: 1});
       res.json(users);
     } catch (error) {
       res.status(500).json({ error: 'Error fetching data' });
@@ -116,7 +116,7 @@ app.get('/google', async (req, res) => {
 
   app.get('/ibm', async (req, res) => {
     try {
-      const users = await Ibm.find();
+      const users = await Ibm.find().sort({_id: 1});
       res.json(users);
     } catch (error) {
       res.status(500).json({ error: 'Error fetching data' });
@@ -584,6 +584,21 @@ app.post('/login', async (req, res) => {
   }
 });
 
+app.get('/count-update', async (req, res) => {
+  try {
+    const Ibm_verfied_count = await Ibm.countDocuments({ verify: true });
+    const google_verfied_count = await Google.countDocuments({ verify: true })
+    const user_verfied_count = await User.countDocuments({ verify: true })
+
+    const total_user_count = await User.countDocuments({ })
+    const total_ibm_count = await Ibm.countDocuments({ })
+    const total_google_count = await Google.countDocuments({ })
+    
+    res.json({ "user total": total_user_count ,"google total" : total_google_count, "ibm total" : total_ibm_count , "user total":total_user_count , "user verfied": user_verfied_count,"google verifed" : google_verfied_count ,"ibm verified":Ibm_verfied_count });
+  } catch (error) {
+    res.status(500).json({ error: 'Error counting verified users' });
+  }
+});
 
 
 // Start the server
