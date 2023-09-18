@@ -134,7 +134,6 @@ app.put('/users/:userId/verify', async (req, res) => {
       const { userid } = req.body
       if (user.verify) 
       {
-        console.log("data")
         return res.json(user);
       } 
       if (userid === undefined)
